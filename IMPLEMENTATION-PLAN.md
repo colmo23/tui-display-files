@@ -50,11 +50,11 @@ This document provides a step-by-step plan for building the TUI File Viewer appl
 
 ### Phase 5: Testing & Deployment
 
--   [ ] **5.1:** Write unit tests for the file system functions (Phase 2).
--   [ ] **5.2:** Perform comprehensive manual testing of the entire user flow.
-    -   [ ] Test navigation, selection, and scrolling.
-    -   [ ] Test with different directory sizes and file types.
-    -   [ ] Test edge cases (empty directory, empty file, permission errors).
--   [ ] **5.3:** Create a build script (`build.sh` or `Makefile`) for producing application binaries.
--   [ ] **5.4:** Write a `README.md` file explaining what the application is, how to build it, and how to run it.
--   [ ] **5.5:** Create a git tag for the `v1.0.0` release.
+-   [x] **5.1:** Write unit tests for the file system functions (Phase 2).
+-   [x] **5.2:** Perform comprehensive manual testing of the entire user flow.
+    -   [x] Test navigation, selection, and scrolling.
+    -   [x] Test with different directory sizes and file types.
+    -   [x] Test edge cases (empty directory, empty file, permission errors).
+-   [x] **5.3:** Create a build script (`build.sh` or `Makefile`) for producing application binaries.
+-   [x] **5.4:** Write a `README.md` file explaining what the application is, how to build it, and how to run it.
+-   [x] **5.5:** Create a git tag for the `v1.0.0` release.

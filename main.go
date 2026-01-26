@@ -75,6 +75,7 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			switch msg.String() {
 			case "esc":
 				m.state = fileListView
+				return m, nil
 			}
 		}
 	}
