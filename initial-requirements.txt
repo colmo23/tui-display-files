@@ -1,0 +1,7 @@
+A TIU applicaiton written in go.
+It lists all the files in a directory, one per line.
+Use cursor up/down keys to select a file. 
+If you press return on a file then a new full screen page with the file contents.
+On the screen with the file contents you can page up/down to view the full contents.
+On the screen with the file contents you can type escape to return to the original file list page
+
