@@ -1,8 +1,11 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
+	"path/filepath"
+	"io"
 
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/viewport"
@@ -25,10 +28,44 @@ func (i item) Title() string       { return i.title }
 func (i item) Description() string { return i.desc }
 func (i item) FilterValue() string { return i.title }
 
+// fileItemDelegate is a custom delegate for list items
+type fileItemDelegate struct{}
+
+func (d fileItemDelegate) Height() int {
+	return 1
+}
+
+func (d fileItemDelegate) Spacing() int {
+	return 0
+}
+
+func (d fileItemDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
+	return nil
+}
+
+func (d fileItemDelegate) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
+	i, ok := listItem.(item)
+	if !ok {
+		return
+	}
+
+	str := fmt.Sprintf("%s   %s", i.Title(), i.Description())
+
+	fn := itemStyle.Render
+	if index == m.Index() {
+		fn = func(s ...string) string {
+			return selectedItemStyle.Render(s...)
+		}
+	}
+
+	fmt.Fprintf(w, fn(str))
+}
+
 type mainModel struct {
 	state        viewState
 	fileList     list.Model
 	fileContent  viewport.Model
+	currentDir   string
 	selectedFile string
 	ready        bool
 	width, height int
@@ -60,8 +97,27 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, tea.Quit
 			case "enter":
 				selectedItem := m.fileList.SelectedItem().(item)
-				if selectedItem.desc != "directory" {
-					content, err := readFileContent(selectedItem.title)
+				// Handle directory traversal
+				if selectedItem.desc == "directory" {
+					var newPath string
+					if selectedItem.title == ".." { // Go up one directory
+						newPath = filepath.Dir(m.currentDir)
+					} else { // Go into selected directory
+						newPath = filepath.Join(m.currentDir, selectedItem.title)
+					}
+
+					// Update file list for new directory
+					newItems, err := loadDirectoryItems(newPath)
+					if err != nil {
+						m.err = err
+						return m, nil
+					}
+					m.fileList.SetItems(newItems)
+					m.currentDir = newPath
+					m.fileList.Title = fmt.Sprintf("Files in %s", m.currentDir)
+					return m, nil
+				} else { // It's a file, view its content
+					content, err := readFileContent(filepath.Join(m.currentDir, selectedItem.title))
 					if err != nil {
 						m.err = err
 						return m, nil
@@ -105,34 +161,25 @@ func (m mainModel) View() string {
 }
 
 func main() {
-	p := tea.NewProgram(initialModel(), tea.WithAltScreen())
+	dirPtr := flag.String("dir", ".", "the directory to display")
+	flag.Parse()
+
+	p := tea.NewProgram(initialModel(*dirPtr), tea.WithAltScreen())
 	if err := p.Start(); err != nil {
 		log.Fatal(err)
 	}
 }
 
-func initialModel() mainModel {
-	items := []list.Item{}
-	files, err := readDir(".")
+func initialModel(initialDir string) mainModel {
+	items, err := loadDirectoryItems(initialDir)
 	if err != nil {
 		panic(err)
 	}
 
-	for _, file := range files {
-		var desc string
-		if file.IsDir() {
-			desc = "directory"
-		} else {
-			info, err := file.Info()
-			if err == nil {
-				desc = fmt.Sprintf("%d bytes", info.Size())
-			}
-		}
-		items = append(items, item{title: file.Name(), desc: desc})
-	}
-
-	l := list.New(items, list.NewDefaultDelegate(), 0, 0)
-	l.Title = "Select a file"
+	// Create a new custom delegate
+	delegate := fileItemDelegate{}
+	l := list.New(items, delegate, 0, 0)
+	l.Title = fmt.Sprintf("Files in %s", initialDir)
 	l.SetShowHelp(true)
 
 	vp := viewport.New(80, 24)
@@ -141,5 +188,40 @@ func initialModel() mainModel {
 		state:       fileListView,
 		fileList:    l,
 		fileContent: vp,
+		currentDir:  initialDir,
 	}
 }
+
+func loadDirectoryItems(dirPath string) ([]list.Item, error) {
+	entries, err := readDir(dirPath)
+	if err != nil {
+		return nil, err
+	}
+
+	items := []list.Item{}
+	// Add ".." to go up a directory, if not at root
+	if dirPath != "/" && dirPath != "." { // Check for root and current directory
+		absPath, err := filepath.Abs(dirPath)
+		if err == nil {
+			parentDir := filepath.Dir(absPath)
+			if absPath != parentDir { // Ensure we're not adding ".." at filesystem root
+				items = append(items, item{title: "..", desc: "directory"})
+			}
+		}
+	}
+
+	for _, entry := range entries {
+		var desc string
+		if entry.IsDir() {
+			desc = "directory"
+		} else {
+			info, err := entry.Info()
+			if err == nil {
+				desc = fmt.Sprintf("%d bytes", info.Size())
+			}
+		}
+		items = append(items, item{title: entry.Name(), desc: desc})
+	}
+	return items, nil
+}
+

@@ -8,4 +8,11 @@ var (
 			Foreground(lipgloss.Color("62")).
 			Bold(true).
 			Padding(0, 1)
+
+	itemStyle = lipgloss.NewStyle().
+			PaddingLeft(4)
+
+	selectedItemStyle = lipgloss.NewStyle().
+				PaddingLeft(4).
+				Foreground(lipgloss.Color("170"))
 )
