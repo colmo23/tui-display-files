@@ -3,9 +3,10 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log"
-	"path/filepath"
 	"io"
+	"log"
+	"os"
+	"path/filepath"
 
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/viewport"
@@ -62,14 +63,14 @@ func (d fileItemDelegate) Render(w io.Writer, m list.Model, index int, listItem 
 }
 
 type mainModel struct {
-	state        viewState
-	fileList     list.Model
-	fileContent  viewport.Model
-	currentDir   string
-	selectedFile string
-	ready        bool
+	state         viewState
+	fileList      list.Model
+	fileContent   viewport.Model
+	currentDir    string
+	selectedFile  string
+	ready         bool
 	width, height int
-	err          error
+	err           error
 }
 
 func (m mainModel) Init() tea.Cmd {
@@ -109,16 +110,19 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					// Update file list for new directory
 					newItems, err := loadDirectoryItems(newPath)
 					if err != nil {
+						log.Printf("error loading directory items: %v", err)
 						m.err = err
 						return m, nil
 					}
 					m.fileList.SetItems(newItems)
+					//			m.selectedFile = newItems[0].FilterValue()
 					m.currentDir = newPath
 					m.fileList.Title = fmt.Sprintf("Files in %s", m.currentDir)
 					return m, nil
 				} else { // It's a file, view its content
 					content, err := readFileContent(filepath.Join(m.currentDir, selectedItem.title))
 					if err != nil {
+						log.Printf("error reading file content: %v", err)
 						m.err = err
 						return m, nil
 					}
@@ -162,7 +166,17 @@ func (m mainModel) View() string {
 
 func main() {
 	dirPtr := flag.String("dir", ".", "the directory to display")
+	logFilePtr := flag.String("log", "", "path to log file")
 	flag.Parse()
+
+	if *logFilePtr != "" {
+		f, err := os.OpenFile(*logFilePtr, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+		if err != nil {
+			log.Fatalf("error opening file: %v", err)
+		}
+		log.SetOutput(f)
+		log.Println("Logging enabled.")
+	}
 
 	p := tea.NewProgram(initialModel(*dirPtr), tea.WithAltScreen())
 	if err := p.Start(); err != nil {
@@ -173,6 +187,7 @@ func main() {
 func initialModel(initialDir string) mainModel {
 	items, err := loadDirectoryItems(initialDir)
 	if err != nil {
+		log.Printf("error loading initial directory items: %v", err)
 		panic(err)
 	}
 
@@ -224,4 +239,3 @@ func loadDirectoryItems(dirPath string) ([]list.Item, error) {
 	}
 	return items, nil
 }
-
