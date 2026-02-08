@@ -59,7 +59,7 @@ func (d fileItemDelegate) Render(w io.Writer, m list.Model, index int, listItem 
 		}
 	}
 
-	fmt.Fprintf(w, fn(str))
+	fmt.Fprint(w, fn(str))
 }
 
 type mainModel struct {
