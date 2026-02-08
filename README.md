@@ -25,3 +25,6 @@ To run the application, execute the binary:
 ```bash
 ./tui-display-files
 ```
+
+## python
+See the README in the python directory for that implementation
