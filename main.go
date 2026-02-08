@@ -50,7 +50,15 @@ func (d fileItemDelegate) Render(w io.Writer, m list.Model, index int, listItem 
 		return
 	}
 
-	str := fmt.Sprintf("%s   %s", i.Title(), i.Description())
+	// Find the longest title to align descriptions
+	maxLen := 0
+	for _, li := range m.Items() {
+		if fi, ok := li.(item); ok && len(fi.title) > maxLen {
+			maxLen = len(fi.title)
+		}
+	}
+
+	str := fmt.Sprintf("%-*s   %s", maxLen, i.Title(), i.Description())
 
 	fn := itemStyle.Render
 	if index == m.Index() {
@@ -117,7 +125,7 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.fileList.SetItems(newItems)
 					//			m.selectedFile = newItems[0].FilterValue()
 					m.currentDir = newPath
-					m.fileList.Title = fmt.Sprintf("Files in %s", m.currentDir)
+					m.fileList.Title = m.currentDir
 					return m, nil
 				} else { // It's a file, view its content
 					content, err := readFileContent(filepath.Join(m.currentDir, selectedItem.title))
@@ -185,7 +193,12 @@ func main() {
 }
 
 func initialModel(initialDir string) mainModel {
-	items, err := loadDirectoryItems(initialDir)
+	absDir, err := filepath.Abs(initialDir)
+	if err != nil {
+		absDir = initialDir
+	}
+
+	items, err := loadDirectoryItems(absDir)
 	if err != nil {
 		log.Printf("error loading initial directory items: %v", err)
 		panic(err)
@@ -194,7 +207,7 @@ func initialModel(initialDir string) mainModel {
 	// Create a new custom delegate
 	delegate := fileItemDelegate{}
 	l := list.New(items, delegate, 0, 0)
-	l.Title = fmt.Sprintf("Files in %s", initialDir)
+	l.Title = absDir
 	l.SetShowHelp(true)
 
 	vp := viewport.New(80, 24)
@@ -203,7 +216,7 @@ func initialModel(initialDir string) mainModel {
 		state:       fileListView,
 		fileList:    l,
 		fileContent: vp,
-		currentDir:  initialDir,
+		currentDir:  absDir,
 	}
 }
 
